@@ -1,3 +1,12 @@
+// This file is part of Foobar.
+// Copyright (C) 2022, github.com/CubedProgrammer, owner of said account.
+
+// Foobar is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+// Foobar is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>. 
+
 #include<dirent.h>
 #include<errno.h>
 #include<stdio.h>
@@ -7,7 +16,7 @@
 #include<unistd.h>
 #define PIPEPATH "/tmp/fixed_size_terminal_terminal_named_pipes"
 
-int maketty(const char *name, const char *rstr, const char *cstr)
+int maketty(const char *name, const char *rstr, const char *cstr, const char *shell)
 {
     int succ = 0;
     DIR *d = opendir(PIPEPATH);
@@ -73,7 +82,7 @@ int maketty(const char *name, const char *rstr, const char *cstr)
             else
             {
                 realpath("/proc/self/exe", exepath);
-                execl(exepath, exepath, "-cs", path, rstr, cstr, (char*)NULL);
+                execl(exepath, exepath, "-ces", path, shell, rstr, cstr, (char*)NULL);
                 perror("execl failed");
                 exit(1);
             }
