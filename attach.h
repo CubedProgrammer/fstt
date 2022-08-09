@@ -7,12 +7,9 @@
 
 // You should have received a copy of the GNU General Public License along with fstt. If not, see <https://www.gnu.org/licenses/>. 
 
-#ifndef Included_ttyfunc_h
-#define Included_ttyfunc_h
-#define CACHEPATH "/tmp/fixed_size_terminal_terminal_cache"
-#define PIPEPATH "/tmp/fixed_size_terminal_terminal_named_pipes"
+#ifndef Included_attach_h
+#define Included_attach_h
 
-int maketty(const char *name, const char *rstr, const char *cstr, const char *shell);
-void list_tty(void);
+int attach_tty(const char *name);
 
 #endif

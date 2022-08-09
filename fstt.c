@@ -1,11 +1,11 @@
-// This file is part of Foobar.
+// This file is part of fstt.
 // Copyright (C) 2022, github.com/CubedProgrammer, owner of said account.
 
-// Foobar is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+// fstt is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
-// Foobar is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+// fstt is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-// You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>. 
+// You should have received a copy of the GNU General Public License along with fstt. If not, see <https://www.gnu.org/licenses/>. 
 
 #include<fcntl.h>
 #include<pty.h>
@@ -16,6 +16,7 @@
 #include<sys/wait.h>
 #include<time.h>
 #include<unistd.h>
+#include"attach.h"
 #include"ttyfunc.h"
 
 int pipetty(int from, int to, int pid, unsigned rcnt, unsigned ccnt)
@@ -79,6 +80,9 @@ int main(int argl, char *argv[])
                         tsz.ws_row = atoi(rstr = argv[++i]);
                         tsz.ws_col = atoi(cstr = argv[++i]);
                         break;
+                    case'l':
+                        list_tty();
+                        break;
                     case'e':
                         shell = argv[++i];
                         break;
@@ -141,9 +145,17 @@ int main(int argl, char *argv[])
         if(spawn != NULL)
         {
             succ = maketty(spawn, rstr, cstr, shell);
+            if(succ)
+            {
+                fputs("Could not make terminal.\n", stderr);
+                attach = NULL;
+            }
         }
         if(attach != NULL)
         {
+            attach_tty(attach);
+            if(succ)
+                fprintf(stderr, "Could not attach terminal %s, check if it exists.\n", attach);
         }
     }
     return succ * -1;
