@@ -28,6 +28,33 @@ void cache_size(const char *path, const char *rstr, const char *cstr)
     }
 }
 
+// Files can't have duplicate names
+// Just don't have 3 and 03
+unsigned first_missing_positive(unsigned arr[], unsigned n)
+{
+    unsigned tmp;
+    for(unsigned i = 0; i < n; ++i)
+    {
+        while(arr[i] != i + 1 && arr[i] > 0)
+        {
+            if(arr[i] > n)
+                arr[i] = -1;
+            else
+            {
+                tmp = arr[i] - 1;
+                arr[i] ^= arr[tmp] ^= arr[i] ^= arr[tmp];
+            }
+        }
+    }
+    unsigned first = n + 1;
+    for(unsigned i = 0; i < n; ++i)
+    {
+        if(arr[i] != i + 1)
+            first = i + 1, n = i;
+    }
+    return first;
+}
+
 int maketty(const char *name, const char *rstr, const char *cstr, const char *shell)
 {
     int succ = 0;
@@ -58,7 +85,9 @@ int maketty(const char *name, const char *rstr, const char *cstr, const char *sh
         if(*name == '\0')
         {
             char isnum;
-            unsigned highnum = 0, num;
+            unsigned num;
+            size_t numcnt = 0, numcapa = 8;
+            unsigned *allnum = malloc(numcapa * sizeof(*allnum)), *new;
             struct dirent *en = readdir(d);
             while(en != NULL)
             {
@@ -74,15 +103,25 @@ int maketty(const char *name, const char *rstr, const char *cstr, const char *sh
                     if(isnum)
                     {
                         num = atoi(name);
-                        if(highnum < num)
-                            highnum = num;
+                        if(numcnt == numcapa)
+                        {
+                            numcapa += numcapa >> 1;
+                            new = malloc(numcapa * sizeof(*new));
+                            if(new == NULL)
+                                perror("malloc failed");
+                            memcpy(new, allnum, sizeof(unsigned) * numcnt);
+                            free(allnum);
+                            allnum = new;
+                        }
+                        allnum[numcnt] = num;
+                        ++numcnt;
                     }
                 }
                 en = readdir(d);
             }
-            ++highnum;
-            sprintf(namebuf, "%u", highnum);
+            sprintf(namebuf, "%u", first_missing_positive(allnum, numcnt));
             name = namebuf;
+            free(allnum);
         }
         closedir(d);
         char path[361], exepath[2601];

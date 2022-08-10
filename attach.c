@@ -7,6 +7,7 @@
 
 // You should have received a copy of the GNU General Public License along with fstt. If not, see <https://www.gnu.org/licenses/>. 
 
+#include<fcntl.h>
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -22,6 +23,8 @@ int attach_tty(const char *name)
     struct termios old, curr;
     unsigned width, height;
     char lfbuf[2704], *lfarr;
+    char path[2601];
+    int pipefd;
     tcgetattr(STDIN_FILENO, &old);
     memcpy(&curr, &old, sizeof(struct termios));
     curr.c_lflag &= ~(ECHO | ICANON);
@@ -41,6 +44,10 @@ int attach_tty(const char *name)
             lfarr = lfbuf;
         if(lfarr != NULL)
         {
+            strcpy(path, PIPEPATH);
+            path[sizeof(PIPEPATH) - 1] = '/';
+            strcpy(path + sizeof(PIPEPATH), name);
+            pipefd = open(path, O_RDONLY);
             memset(lfarr, '\n', height - 1);
             lfarr[height - 1] = '\0';
             fputs(lfarr, stdout);
