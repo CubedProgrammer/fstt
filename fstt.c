@@ -19,7 +19,7 @@
 #include"attach.h"
 #include"ttyfunc.h"
 
-int pipetty(int from, int to, int pid, unsigned rcnt, unsigned ccnt)
+int pipetty(int procfd, int pipefd, int pid, unsigned rcnt, unsigned ccnt)
 {
     int succ = 0;
     int status, npid = 0;
@@ -32,16 +32,25 @@ int pipetty(int from, int to, int pid, unsigned rcnt, unsigned ccnt)
     while(npid == pid)
     {
         FD_ZERO(fdsp);
-        FD_SET(from, fdsp);
+        FD_SET(procfd, fdsp);
+        FD_SET(pipefd, fdsp);
         tv.tv_sec = 300;
         tv.tv_usec = 0;
-        ready = select(from + 1, fdsp, NULL, NULL, tvp);
+        ready = select(procfd + 1, fdsp, NULL, NULL, tvp);
         if(ready == -1)
             perror("select failed");
         else if(ready)
         {
-            bc = read(from, buf, sizeof buf);
-            write(to, buf, bc);
+            if(FD_ISSET(procfd, fdsp))
+            {
+                bc = read(procfd, buf, sizeof buf);
+                write(pipefd, buf, bc);
+            }
+            if(FD_ISSET(pipefd, fdsp))
+            {
+                bc = read(pipefd, buf, sizeof buf);
+                write(procfd, buf, bc);
+            }
         }
         npid = waitpid(pid, &status, WNOHANG);
     }
@@ -153,7 +162,8 @@ int main(int argl, char *argv[])
         }
         if(attach != NULL)
         {
-            attach_tty(attach);
+            setvbuf(stdout, NULL, _IONBF, 0);
+           succ = attach_tty(attach);
             if(succ)
                 fprintf(stderr, "Could not attach terminal %s, check if it exists.\n", attach);
         }

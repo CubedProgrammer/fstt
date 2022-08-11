@@ -12,6 +12,7 @@
 #include<stdlib.h>
 #include<string.h>
 #include<sys/ioctl.h>
+#include<sys/select.h>
 #include<termios.h>
 #include<unistd.h>
 #include"ttyfunc.h"
@@ -23,8 +24,12 @@ int attach_tty(const char *name)
     struct termios old, curr;
     unsigned width, height;
     char lfbuf[2704], *lfarr;
-    char path[2601];
-    int pipefd;
+    char path[2601], cbuf[8192];
+    size_t bc;
+    int pipefd, ready;
+    fd_set fds, *fdsp = &fds;
+    struct timeval tv, *tvp = &tv;
+    char detached;
     tcgetattr(STDIN_FILENO, &old);
     memcpy(&curr, &old, sizeof(struct termios));
     curr.c_lflag &= ~(ECHO | ICANON);
@@ -47,13 +52,47 @@ int attach_tty(const char *name)
             strcpy(path, PIPEPATH);
             path[sizeof(PIPEPATH) - 1] = '/';
             strcpy(path + sizeof(PIPEPATH), name);
-            pipefd = open(path, O_RDONLY);
-            memset(lfarr, '\n', height - 1);
-            lfarr[height - 1] = '\0';
-            fputs(lfarr, stdout);
-            if(lfarr != lfbuf)
-                free(lfarr);
-            printf("\033\133%uA", height - 1);
+            pipefd = open(path, O_RDWR);
+            if(pipefd < 0)
+                perror("opening named pipe failed");
+            else
+            {
+                memset(lfarr, '\n', height - 1);
+                lfarr[height - 1] = '\0';
+                fputs(lfarr, stdout);
+                if(lfarr != lfbuf)
+                    free(lfarr);
+                printf("\033\133%uA", height - 1);
+                detached = 0;
+                while(!detached)
+                {
+                    FD_ZERO(fdsp);
+                    FD_SET(pipefd, fdsp);
+                    FD_SET(STDIN_FILENO, fdsp);
+                    tv.tv_sec = 240;
+                    tv.tv_usec = 0;
+                    ready = select(pipefd + 1, fdsp, NULL, NULL, tvp);
+                    if(ready == -1)
+                        perror("select failed");
+                    else if(ready)
+                    {
+                        if(FD_ISSET(pipefd, fdsp))
+                        {
+                            bc = read(pipefd, cbuf, sizeof cbuf);
+                            write(STDOUT_FILENO, cbuf, bc);
+                        }
+                        if(FD_ISSET(STDIN_FILENO, fdsp))
+                        {
+                            bc = read(STDIN_FILENO, cbuf, sizeof cbuf);
+                            write(pipefd, cbuf, bc);
+                        }
+                    }
+                }
+                if(detached == 1)
+                    printf("Detached from session %s.\n", name);
+                else
+                    puts("Exited");
+            }
         }
         else
             succ = -1;
