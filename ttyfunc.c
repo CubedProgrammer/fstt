@@ -58,6 +58,7 @@ unsigned first_missing_positive(unsigned arr[], unsigned n)
 int maketty(const char *name, const char *rstr, const char *cstr, const char *shell)
 {
     int succ = 0;
+    int ttynum = -1;
     DIR *d = opendir(PIPEPATH);
     if(access(CACHEPATH, F_OK))
     {
@@ -119,7 +120,8 @@ int maketty(const char *name, const char *rstr, const char *cstr, const char *sh
                 }
                 en = readdir(d);
             }
-            sprintf(namebuf, "%u", first_missing_positive(allnum, numcnt));
+            ttynum = first_missing_positive(allnum, numcnt);
+            sprintf(namebuf, "%d", ttynum);
             name = namebuf;
             free(allnum);
         }
@@ -137,7 +139,10 @@ int maketty(const char *name, const char *rstr, const char *cstr, const char *sh
         {
             pid = fork();
             if(pid > 0)
-                succ = 0;
+            {
+                if(ttynum >= 0)
+                    succ = ttynum;
+            }
             else if(pid < 0)
                 perror("fork failed");
             else

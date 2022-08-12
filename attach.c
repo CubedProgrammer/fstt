@@ -52,7 +52,7 @@ int attach_tty(const char *name)
             strcpy(path, PIPEPATH);
             path[sizeof(PIPEPATH) - 1] = '/';
             strcpy(path + sizeof(PIPEPATH), name);
-            pipefd = open(path, O_RDWR);
+            pipefd = open(path, O_WRONLY);
             if(pipefd < 0)
                 perror("opening named pipe failed");
             else
@@ -67,24 +67,24 @@ int attach_tty(const char *name)
                 while(!detached)
                 {
                     FD_ZERO(fdsp);
-                    FD_SET(pipefd, fdsp);
+                    //FD_SET(pipefd, fdsp);
                     FD_SET(STDIN_FILENO, fdsp);
                     tv.tv_sec = 240;
                     tv.tv_usec = 0;
-                    ready = select(pipefd + 1, fdsp, NULL, NULL, tvp);
+                    ready = select(1, fdsp, NULL, NULL, tvp);
                     if(ready == -1)
                         perror("select failed");
                     else if(ready)
                     {
-                        if(FD_ISSET(pipefd, fdsp))
+                        /*if(FD_ISSET(pipefd, fdsp))
                         {
                             bc = read(pipefd, cbuf, sizeof cbuf);
                             write(STDOUT_FILENO, cbuf, bc);
-                        }
+                        }*/
                         if(FD_ISSET(STDIN_FILENO, fdsp))
                         {
                             bc = read(STDIN_FILENO, cbuf, sizeof cbuf);
-                            write(pipefd, cbuf, bc);
+                            write(pipefd, cbuf, bc);                        
                         }
                     }
                 }
