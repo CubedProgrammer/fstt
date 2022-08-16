@@ -68,13 +68,11 @@ int pipetty(int procfd, int ipipefd, int opipefd, int pid, unsigned rcnt, unsign
             if(FD_ISSET(procfd, fdsp))
             {
                 bc = read(procfd, buf, sizeof buf);
-                printf("%zu bytes read from procfd", bc);
                 write(opipefd, buf, bc);
             }
             if(FD_ISSET(ipipefd, fdsp))
             {
                 bc = read(ipipefd, buf, sizeof buf);
-                printf("%zu bytes read from pipefd", bc);
                 write(procfd, buf, bc);
             }
         }
@@ -85,7 +83,6 @@ int pipetty(int procfd, int ipipefd, int opipefd, int pid, unsigned rcnt, unsign
         perror("waitpid failed");
         succ = -1;
     }
-    printf("%d %d pid npid", pid, npid);
     return succ;
 }
 
@@ -97,7 +94,7 @@ int main(int argl, char *argv[])
     unsigned ttynum;
     int inpfd, onpfd;
     struct winsize tsz;
-    const char *rstr = "80", *cstr = "24";
+    const char *cstr = "80", *rstr = "24";
     const char *shell = "bash";
     char *spawn = NULL, *arg;
     char *attach = NULL;
@@ -159,6 +156,10 @@ int main(int argl, char *argv[])
                     succ = pipetty(master, inpfd, onpfd, pid, tsz.ws_row, tsz.ws_col);
                     close(inpfd);
                     close(onpfd);
+                    strcpy(path, CACHEPATH);
+                    path[sizeof(CACHEPATH) - 1] = '/';
+                    strcpy(path + sizeof(CACHEPATH), attach);
+                    unlink(path);
                     printf("%s and process %i has terminated.\n", attach, pid);
                 }
                 else
@@ -192,7 +193,6 @@ int main(int argl, char *argv[])
     {
         if(spawn != NULL)
         {
-            unsigned ttynum;
             succ = maketty(spawn, rstr, cstr, shell, &ttynum);
             if(succ == -1)
             {
@@ -204,6 +204,8 @@ int main(int argl, char *argv[])
                 sprintf(numstr, "%d", ttynum);
                 attach = numstr;
             }
+            else
+                attach = spawn;
         }
         if(attach != NULL)
         {

@@ -27,6 +27,7 @@ int attach_tty(const char *name)
     char path[2601], cbuf[8192];
     size_t bc;
     int ipipefd, opipefd, ready;
+    int status;
     fd_set fds, *fdsp = &fds;
     struct timeval tv, *tvp = &tv;
     char detached;
@@ -55,6 +56,9 @@ int attach_tty(const char *name)
             opipefd = open(path, O_WRONLY);
             memcpy(path, OPIPEPATH, sizeof(OPIPEPATH) - 1);
             ipipefd = open(path, O_RDONLY);
+            strcpy(path, CACHEPATH);
+            path[sizeof(CACHEPATH) - 1] = '/';
+            strcpy(path + sizeof(CACHEPATH), name);
             if(opipefd < 0)
                 perror("opening named pipe failed");
             else
@@ -81,14 +85,18 @@ int attach_tty(const char *name)
                         if(FD_ISSET(ipipefd, fdsp))
                         {
                             bc = read(ipipefd, cbuf, sizeof cbuf);
-                            write(STDOUT_FILENO, cbuf, bc);
+                            if(bc != -1)
+                                write(STDOUT_FILENO, cbuf, bc);
                         }
                         if(FD_ISSET(STDIN_FILENO, fdsp))
                         {
                             bc = read(STDIN_FILENO, cbuf, sizeof cbuf);
-                            write(opipefd, cbuf, bc);
+                            if(bc != -1)
+                                write(opipefd, cbuf, bc);
                         }
                     }
+                    if(access(path, F_OK))
+                        detached = 2;
                 }
                 if(detached == 1)
                     printf("Detached from session %s.\n", name);
