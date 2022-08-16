@@ -9,10 +9,12 @@
 
 #ifndef Included_ttyfunc_h
 #define Included_ttyfunc_h
-#define CACHEPATH "/tmp/fixed_size_terminal_terminal_cache"
-#define PIPEPATH "/tmp/fixed_size_terminal_terminal_named_pipes"
+#define TMPPATH "/tmp/fixed_size_terminal_terminal"
+#define CACHEPATH "/tmp/fixed_size_terminal_terminal/cache"
+#define IPIPEPATH "/tmp/fixed_size_terminal_terminal/inamed_pipes"
+#define OPIPEPATH "/tmp/fixed_size_terminal_terminal/onamed_pipes"
 
-int maketty(const char *name, const char *rstr, const char *cstr, const char *shell);
+int maketty(const char *name, const char *rstr, const char *cstr, const char *shell, unsigned *restrict ttynumptr);
 void list_tty(void);
 
 #endif

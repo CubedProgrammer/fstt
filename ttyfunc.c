@@ -55,31 +55,17 @@ unsigned first_missing_positive(unsigned arr[], unsigned n)
     return first;
 }
 
-int maketty(const char *name, const char *rstr, const char *cstr, const char *shell)
+int maketty(const char *name, const char *rstr, const char *cstr, const char *shell, unsigned *restrict ttynumptr)
 {
     int succ = 0;
     int ttynum = -1;
-    DIR *d = opendir(PIPEPATH);
-    if(access(CACHEPATH, F_OK))
-    {
-        succ = mkdir(CACHEPATH, 0755);
-        if(succ)
-            perror("mkdir failed");
-    }
+    DIR *d = opendir(CACHEPATH);
     if(d == NULL)
     {
-        if(errno != ENOENT)
-            perror("opendir failed");
-        else
-        {
-            succ = mkdir(PIPEPATH, 0755);
-            if(succ == 0)
-                d = opendir(PIPEPATH);
-            else
-                perror("mkdir failed");
-        }
+        perror("opendir failed");
+        succ = -1;
     }
-    if(d != NULL)
+    else
     {
         char namebuf[9];
         int pid;
@@ -129,26 +115,30 @@ int maketty(const char *name, const char *rstr, const char *cstr, const char *sh
         char path[361], exepath[2601];
         strcpy(path, CACHEPATH);
         path[sizeof(CACHEPATH) - 1] = '/';
-        strcat(path, name);
+        strcpy(path + sizeof(CACHEPATH), name);
         cache_size(path, rstr, cstr);
-        strcpy(path, PIPEPATH);
-        path[sizeof(PIPEPATH) - 1] = '/';
-        strcat(path, name);
-        succ = mkfifo(path, 0755);
+        strcpy(path, IPIPEPATH);
+        path[sizeof(IPIPEPATH) - 1] = '/';
+        strcpy(path + sizeof(IPIPEPATH), name);
+        succ += mkfifo(path, 0755);
+        strcpy(path, OPIPEPATH);
+        path[sizeof(OPIPEPATH) - 1] = '/';
+        strcpy(path + sizeof(OPIPEPATH), name);
+        succ += mkfifo(path, 0755);
         if(succ == 0)
         {
             pid = fork();
             if(pid > 0)
             {
                 if(ttynum >= 0)
-                    succ = ttynum;
+                    *ttynumptr = ttynum;
             }
             else if(pid < 0)
                 perror("fork failed");
             else
             {
                 realpath("/proc/self/exe", exepath);
-                execl(exepath, exepath, "-ces", path, shell, rstr, cstr, (char*)NULL);
+                execl(exepath, exepath, "-ces", name, shell, rstr, cstr, (char*)NULL);
                 perror("execl failed");
                 exit(1);
             }
@@ -156,14 +146,12 @@ int maketty(const char *name, const char *rstr, const char *cstr, const char *sh
         else
             perror("mkfifo failed");
     }
-    else
-        succ = -1;
     return succ;
 }
 
 void list_tty(void)
 {
-    DIR *d = opendir(PIPEPATH);
+    DIR *d = opendir(CACHEPATH);
     if(d != NULL)
     {
         fputs("Terminal names:", stdout);

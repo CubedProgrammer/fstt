@@ -26,7 +26,7 @@ int attach_tty(const char *name)
     char lfbuf[2704], *lfarr;
     char path[2601], cbuf[8192];
     size_t bc;
-    int pipefd, ready;
+    int ipipefd, opipefd, ready;
     fd_set fds, *fdsp = &fds;
     struct timeval tv, *tvp = &tv;
     char detached;
@@ -49,11 +49,13 @@ int attach_tty(const char *name)
             lfarr = lfbuf;
         if(lfarr != NULL)
         {
-            strcpy(path, PIPEPATH);
-            path[sizeof(PIPEPATH) - 1] = '/';
-            strcpy(path + sizeof(PIPEPATH), name);
-            pipefd = open(path, O_WRONLY);
-            if(pipefd < 0)
+            strcpy(path, IPIPEPATH);
+            path[sizeof(IPIPEPATH) - 1] = '/';
+            strcpy(path + sizeof(IPIPEPATH), name);
+            opipefd = open(path, O_WRONLY);
+            memcpy(path, OPIPEPATH, sizeof(OPIPEPATH) - 1);
+            ipipefd = open(path, O_RDONLY);
+            if(opipefd < 0)
                 perror("opening named pipe failed");
             else
             {
@@ -67,24 +69,24 @@ int attach_tty(const char *name)
                 while(!detached)
                 {
                     FD_ZERO(fdsp);
-                    //FD_SET(pipefd, fdsp);
+                    FD_SET(ipipefd, fdsp);
                     FD_SET(STDIN_FILENO, fdsp);
                     tv.tv_sec = 240;
                     tv.tv_usec = 0;
-                    ready = select(1, fdsp, NULL, NULL, tvp);
+                    ready = select(ipipefd + 1, fdsp, NULL, NULL, tvp);
                     if(ready == -1)
                         perror("select failed");
                     else if(ready)
                     {
-                        /*if(FD_ISSET(pipefd, fdsp))
+                        if(FD_ISSET(ipipefd, fdsp))
                         {
-                            bc = read(pipefd, cbuf, sizeof cbuf);
+                            bc = read(ipipefd, cbuf, sizeof cbuf);
                             write(STDOUT_FILENO, cbuf, bc);
-                        }*/
+                        }
                         if(FD_ISSET(STDIN_FILENO, fdsp))
                         {
                             bc = read(STDIN_FILENO, cbuf, sizeof cbuf);
-                            write(pipefd, cbuf, bc);                        
+                            write(opipefd, cbuf, bc);
                         }
                     }
                 }

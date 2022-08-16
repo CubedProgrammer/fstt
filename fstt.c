@@ -11,22 +11,45 @@
 #include<pty.h>
 #include<stdio.h>
 #include<stdlib.h>
+#include<string.h>
 #include<sys/ioctl.h>
 #include<sys/select.h>
+#include<sys/stat.h>
 #include<sys/wait.h>
 #include<time.h>
 #include<unistd.h>
 #include"attach.h"
 #include"ttyfunc.h"
 
-int pipetty(int procfd, int pipefd, int pid, unsigned rcnt, unsigned ccnt)
+int mktmpdir(void)
+{
+    int succ = 0;
+    const char *dirpath = TMPPATH;
+    if(access(dirpath, F_OK))
+    {
+        succ = mkdir(dirpath, 0755);
+        if(succ)
+            perror("Making temporary directory failed");
+        else
+        {
+            succ = mkdir(CACHEPATH, 0755);
+            succ += mkdir(IPIPEPATH, 0755);
+            succ += mkdir(OPIPEPATH, 0755);
+            if(succ)
+                perror("Making temporary subdirectories failed");
+        }
+    }
+    return succ;
+}
+
+int pipetty(int procfd, int ipipefd, int opipefd, int pid, unsigned rcnt, unsigned ccnt)
 {
     int succ = 0;
     int status, npid = 0;
     int ready;
     unsigned currcol = 0;
     char buf[8192];
-    int biggerfd = procfd > pipefd ? procfd : pipefd;
+    int biggerfd = ipipefd > procfd ? ipipefd : procfd;
     size_t bc;
     fd_set fds, *fdsp = &fds;
     struct timeval tv, *tvp = &tv;
@@ -34,7 +57,7 @@ int pipetty(int procfd, int pipefd, int pid, unsigned rcnt, unsigned ccnt)
     {
         FD_ZERO(fdsp);
         FD_SET(procfd, fdsp);
-        FD_SET(pipefd, fdsp);
+        FD_SET(ipipefd, fdsp);
         tv.tv_sec = 300;
         tv.tv_usec = 0;
         ready = select(biggerfd + 1, fdsp, NULL, NULL, tvp);
@@ -46,11 +69,11 @@ int pipetty(int procfd, int pipefd, int pid, unsigned rcnt, unsigned ccnt)
             {
                 bc = read(procfd, buf, sizeof buf);
                 printf("%zu bytes read from procfd", bc);
-                write(pipefd, buf, bc);
+                write(opipefd, buf, bc);
             }
-            if(FD_ISSET(pipefd, fdsp))
+            if(FD_ISSET(ipipefd, fdsp))
             {
-                bc = read(pipefd, buf, sizeof buf);
+                bc = read(ipipefd, buf, sizeof buf);
                 printf("%zu bytes read from pipefd", bc);
                 write(procfd, buf, bc);
             }
@@ -68,9 +91,11 @@ int pipetty(int procfd, int pipefd, int pid, unsigned rcnt, unsigned ccnt)
 
 int main(int argl, char *argv[])
 {
-    int succ = 0;
+    int succ = mktmpdir();
     int pid;
     int master, slave;
+    unsigned ttynum;
+    int inpfd, onpfd;
     struct winsize tsz;
     const char *rstr = "80", *cstr = "24";
     const char *shell = "bash";
@@ -78,6 +103,7 @@ int main(int argl, char *argv[])
     char *attach = NULL;
     char empty[] = "";
     char numstr[10];
+    char path[2601];
     char ctrl = 0;
     if(argl == 1)
         spawn = empty;
@@ -121,12 +147,18 @@ int main(int argl, char *argv[])
             pid = fork();
             if(pid > 0)
             {
-                int npfd = open(attach, O_RDONLY);
+                strcpy(path, IPIPEPATH);
+                path[sizeof(IPIPEPATH) - 1] = '/';
+                strcpy(path + sizeof(IPIPEPATH), attach);
+                inpfd = open(path, O_RDONLY);
+                memcpy(path, OPIPEPATH, sizeof(OPIPEPATH) - 1);
+                onpfd = open(path, O_WRONLY);
                 close(slave);
-                if(npfd > 0)
+                if(inpfd > 0 && onpfd > 0)
                 {
-                    succ = pipetty(master, npfd, pid, tsz.ws_row, tsz.ws_col);
-                    close(npfd);
+                    succ = pipetty(master, inpfd, onpfd, pid, tsz.ws_row, tsz.ws_col);
+                    close(inpfd);
+                    close(onpfd);
                     printf("%s and process %i has terminated.\n", attach, pid);
                 }
                 else
@@ -160,7 +192,8 @@ int main(int argl, char *argv[])
     {
         if(spawn != NULL)
         {
-            succ = maketty(spawn, rstr, cstr, shell);
+            unsigned ttynum;
+            succ = maketty(spawn, rstr, cstr, shell, &ttynum);
             if(succ == -1)
             {
                 fputs("Could not make terminal.\n", stderr);
@@ -168,7 +201,7 @@ int main(int argl, char *argv[])
             }
             else if(*spawn == '\0')
             {
-                sprintf(numstr, "%d", succ);
+                sprintf(numstr, "%d", ttynum);
                 attach = numstr;
             }
         }
