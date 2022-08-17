@@ -46,7 +46,7 @@ int pipetty(int procfd, int ipipefd, int opipefd, int pid, unsigned rcnt, unsign
 {
     int succ = 0;
     int status, npid = 0;
-    int ready;
+    int ready, loopcnt = 0;
     unsigned currcol = 0;
     char buf[8192];
     int biggerfd = ipipefd > procfd ? ipipefd : procfd;
@@ -61,6 +61,8 @@ int pipetty(int procfd, int ipipefd, int opipefd, int pid, unsigned rcnt, unsign
         tv.tv_sec = 300;
         tv.tv_usec = 0;
         ready = select(biggerfd + 1, fdsp, NULL, NULL, tvp);
+        if(++loopcnt == 10000)
+            printf("%d is ready\n", ready);
         if(ready == -1)
             perror("select failed");
         else if(ready)
@@ -68,12 +70,20 @@ int pipetty(int procfd, int ipipefd, int opipefd, int pid, unsigned rcnt, unsign
             if(FD_ISSET(procfd, fdsp))
             {
                 bc = read(procfd, buf, sizeof buf);
-                write(opipefd, buf, bc);
+                if(bc == -1)
+                    perror("read procfd failed");
+                else
+                    write(opipefd, buf, bc);
             }
             if(FD_ISSET(ipipefd, fdsp))
             {
                 bc = read(ipipefd, buf, sizeof buf);
-                write(procfd, buf, bc);
+                if(loopcnt == 10000)
+                    printf("ipipefd was ready %zu\n", bc);
+                if(bc == -1)
+                    perror("read ipipefd failed");
+                else
+                    write(procfd, buf, bc);
             }
         }
         npid = waitpid(pid, &status, WNOHANG);
@@ -156,6 +166,9 @@ int main(int argl, char *argv[])
                     succ = pipetty(master, inpfd, onpfd, pid, tsz.ws_row, tsz.ws_col);
                     close(inpfd);
                     close(onpfd);
+                    unlink(path);
+                    memcpy(path, IPIPEPATH, sizeof(IPIPEPATH) - 1);
+                    unlink(path);
                     strcpy(path, CACHEPATH);
                     path[sizeof(CACHEPATH) - 1] = '/';
                     strcpy(path + sizeof(CACHEPATH), attach);

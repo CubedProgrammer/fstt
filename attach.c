@@ -17,6 +17,39 @@
 #include<unistd.h>
 #include"ttyfunc.h"
 
+ssize_t process_input(char *ctlmodep, char *detachp, char *buf, size_t cnt)
+{
+    ssize_t succcnt = cnt;
+    size_t shift = 0;
+    for(char *it = buf; it != buf + cnt; ++it)
+    {
+        if(shift)
+            *it = it[shift];
+        if(*ctlmodep == 1)
+        {
+            switch(*it)
+            {
+                case'D':
+                case'd':
+                    *detachp = 1;
+                    cnt = it - buf + 1;
+                    succcnt = cnt - 1;
+                    break;
+                default:
+                    break;
+            }
+        }
+        // 2 is Ctrl+B
+        if(*it == 2)
+        {
+            --succcnt, --cnt;
+            ++shift, --it;
+            *ctlmodep = 1;
+        }
+    }
+    return succcnt;
+}
+
 int attach_tty(const char *name)
 {
     int succ = 0;
@@ -30,7 +63,7 @@ int attach_tty(const char *name)
     int status;
     fd_set fds, *fdsp = &fds;
     struct timeval tv, *tvp = &tv;
-    char detached;
+    char detached, ctlmode = 0;
     tcgetattr(STDIN_FILENO, &old);
     memcpy(&curr, &old, sizeof(struct termios));
     curr.c_lflag &= ~(ECHO | ICANON);
@@ -92,7 +125,10 @@ int attach_tty(const char *name)
                         {
                             bc = read(STDIN_FILENO, cbuf, sizeof cbuf);
                             if(bc != -1)
+                            {
+                                bc = process_input(&ctlmode, &detached, cbuf, bc);
                                 write(opipefd, cbuf, bc);
+                            }
                         }
                     }
                     if(access(path, F_OK))
@@ -102,6 +138,8 @@ int attach_tty(const char *name)
                     printf("Detached from session %s.\n", name);
                 else
                     puts("Exited");
+                close(ipipefd);
+                close(opipefd);
             }
         }
         else
