@@ -17,6 +17,20 @@
 #include<unistd.h>
 #include"ttyfunc.h"
 
+long cntln(char *buf, size_t cnt)
+{
+    long ln = 0;
+    for(size_t i = 0; i < cnt; ++i)
+    {
+        switch(buf[i])
+        {
+            case'\n':
+                ++ln;
+        }
+    }
+    return ln;
+}
+
 ssize_t process_input(char *ctlmodep, char *detachp, char *buf, size_t cnt)
 {
     ssize_t succcnt = cnt;
@@ -57,13 +71,16 @@ int attach_tty(const char *name)
     struct termios old, curr;
     unsigned width, height;
     char lfbuf[2704], *lfarr;
+    char *spacearr;
     char path[2601], cbuf[8192];
     size_t bc;
     int ipipefd, opipefd, ready;
     int status;
+    long lnmoved = 0;
     fd_set fds, *fdsp = &fds;
     struct timeval tv, *tvp = &tv;
     char detached, ctlmode = 0;
+    setvbuf(stdout, NULL, _IONBF, 0);
     tcgetattr(STDIN_FILENO, &old);
     memcpy(&curr, &old, sizeof(struct termios));
     curr.c_lflag &= ~(ECHO | ICANON);
@@ -118,6 +135,9 @@ int attach_tty(const char *name)
                         if(FD_ISSET(ipipefd, fdsp))
                         {
                             bc = read(ipipefd, cbuf, sizeof cbuf);
+                            lnmoved += cntln(cbuf, bc);
+                            if(lnmoved < 0)
+                                lnmoved = 0;
                             if(bc != -1)
                                 write(STDOUT_FILENO, cbuf, bc);
                         }
@@ -134,6 +154,23 @@ int attach_tty(const char *name)
                     if(access(path, F_OK))
                         detached = 2;
                 }
+                if(lnmoved)
+                    printf("\033\133%ldF", lnmoved);
+                    if(width > sizeof lfbuf)
+                        spacearr = malloc(width);
+                    else
+                        spacearr = lfbuf;
+                    memset(spacearr, ' ', width);
+                    for(unsigned i = 0; i < height; ++i)
+                    {
+                        fwrite(spacearr, 1, width, stdout);
+                        if(i + 1 < height)
+                            putchar('\n');
+                        else
+                            printf("\033\133%uF", i);
+                    }
+                    if(spacearr != lfbuf)
+                        free(spacearr);
                 if(detached == 1)
                     printf("Detached from session %s.\n", name);
                 else

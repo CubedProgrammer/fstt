@@ -9,6 +9,7 @@
 
 #include<fcntl.h>
 #include<pty.h>
+#include<signal.h>
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -108,6 +109,7 @@ int main(int argl, char *argv[])
     char numstr[10];
     char path[2601];
     char ctrl = 0;
+    signal(SIGINT, SIG_IGN);
     if(argl == 1)
         spawn = empty;
     for(int i = 1; i < argl; ++i)
