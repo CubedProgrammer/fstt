@@ -119,6 +119,22 @@ int main(int argl, char *argv[])
             {
                 switch(*it)
                 {
+                    case'-':
+                        arg += 2;
+                        it += strlen(arg);
+                        if(strcmp(arg, "help") == 0)
+                        {
+                            printf("%s [OPTIONS...] [TERMINAL NAME]\n", *argv);
+                            puts("-s ROWS COLUMNS for the size of the spawned pseudoterminal.");
+                            puts("-l to list names of all running pseudoterminals.");
+                            puts("-e SHELL to set the shell to run.");
+                            puts("-c SLAVE to create and control a terminal. DO NOT USE.");
+                            puts("-a NAME to attach a terminal with specified name.");
+                        }
+                        else
+                            fprintf(stderr, "Unrecognized long option --%s will be ignored.\n", arg);
+                        spawn = NULL;
+                        break;
                     case's':
                         tsz.ws_row = atoi(rstr = argv[++i]);
                         tsz.ws_col = atoi(cstr = argv[++i]);
