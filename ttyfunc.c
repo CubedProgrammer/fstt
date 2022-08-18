@@ -30,27 +30,27 @@ void cache_size(const char *path, const char *rstr, const char *cstr)
 
 // Files can't have duplicate names
 // Just don't have 3 and 03
-unsigned first_missing_positive(unsigned arr[], unsigned n)
+unsigned first_missing_nonnega(unsigned arr[], unsigned n)
 {
     unsigned tmp;
     for(unsigned i = 0; i < n; ++i)
     {
-        while(arr[i] != i + 1 && arr[i] > 0)
+        while(arr[i] != i && arr[i] < n)
         {
-            if(arr[i] > n)
+            if(arr[i] >= n)
                 arr[i] = -1;
             else
             {
-                tmp = arr[i] - 1;
+                tmp = arr[i];
                 arr[i] ^= arr[tmp] ^= arr[i] ^= arr[tmp];
             }
         }
     }
-    unsigned first = n + 1;
+    unsigned first = n;
     for(unsigned i = 0; i < n; ++i)
     {
-        if(arr[i] != i + 1)
-            first = i + 1, n = i;
+        if(arr[i] != i)
+            first = i, n = i;
     }
     return first;
 }
@@ -106,7 +106,7 @@ int maketty(const char *name, const char *rstr, const char *cstr, const char *sh
                 }
                 en = readdir(d);
             }
-            ttynum = first_missing_positive(allnum, numcnt);
+            ttynum = first_missing_nonnega(allnum, numcnt);
             sprintf(namebuf, "%d", ttynum);
             name = namebuf;
             free(allnum);

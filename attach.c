@@ -40,7 +40,7 @@ ssize_t process_input(char *ctlmodep, char *detachp, char *buf, size_t cnt)
             }
         }
         // 2 is Ctrl+B
-        if(*it == 2)
+        if(!*ctlmodep && *it == 2)
         {
             --succcnt, --cnt;
             ++shift, --it;

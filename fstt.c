@@ -61,8 +61,6 @@ int pipetty(int procfd, int ipipefd, int opipefd, int pid, unsigned rcnt, unsign
         tv.tv_sec = 300;
         tv.tv_usec = 0;
         ready = select(biggerfd + 1, fdsp, NULL, NULL, tvp);
-        if(++loopcnt == 10000)
-            printf("%d is ready\n", ready);
         if(ready == -1)
             perror("select failed");
         else if(ready)
@@ -78,8 +76,6 @@ int pipetty(int procfd, int ipipefd, int opipefd, int pid, unsigned rcnt, unsign
             if(FD_ISSET(ipipefd, fdsp))
             {
                 bc = read(ipipefd, buf, sizeof buf);
-                if(loopcnt == 10000)
-                    printf("ipipefd was ready %zu\n", bc);
                 if(bc == -1)
                     perror("read ipipefd failed");
                 else
@@ -88,7 +84,7 @@ int pipetty(int procfd, int ipipefd, int opipefd, int pid, unsigned rcnt, unsign
         }
         npid = waitpid(pid, &status, WNOHANG);
     }
-    if(npid == -1)
+    if(npid != pid)
     {
         perror("waitpid failed");
         succ = -1;
@@ -126,17 +122,22 @@ int main(int argl, char *argv[])
                     case's':
                         tsz.ws_row = atoi(rstr = argv[++i]);
                         tsz.ws_col = atoi(cstr = argv[++i]);
+                        if(spawn == NULL)
+                            spawn = empty;
                         break;
                     case'l':
                         list_tty();
                         break;
                     case'e':
                         shell = argv[++i];
+                        if(spawn == NULL)
+                            spawn = empty;
                         break;
                     case'c':
                         ctrl = 1;
                     case'a':
                         attach = argv[++i];
+                        spawn = NULL;
                         break;
                     default:
                         fprintf(stderr, "Unrecognized option %c will be ignored.\n", *it);
@@ -157,9 +158,9 @@ int main(int argl, char *argv[])
                 strcpy(path, IPIPEPATH);
                 path[sizeof(IPIPEPATH) - 1] = '/';
                 strcpy(path + sizeof(IPIPEPATH), attach);
-                inpfd = open(path, O_RDONLY);
+                inpfd = open(path, O_RDWR);
                 memcpy(path, OPIPEPATH, sizeof(OPIPEPATH) - 1);
-                onpfd = open(path, O_WRONLY);
+                onpfd = open(path, O_RDWR);
                 close(slave);
                 if(inpfd > 0 && onpfd > 0)
                 {
