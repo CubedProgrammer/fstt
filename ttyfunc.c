@@ -13,6 +13,7 @@
 #include<stdlib.h>
 #include<string.h>
 #include<sys/stat.h>
+#include<time.h>
 #include<unistd.h>
 #include"ttyfunc.h"
 
@@ -149,20 +150,83 @@ int maketty(const char *name, const char *rstr, const char *cstr, const char *sh
     return succ;
 }
 
-void list_tty(void)
+void list_tty(char l)
 {
+    char **names, **tmpname;
+    size_t cnt, capa;
     DIR *d = opendir(CACHEPATH);
     if(d != NULL)
     {
-        fputs("Terminal names:", stdout);
+        if(l)
+        {
+            capa = 18;
+            names = malloc(capa * sizeof(*names));
+            cnt = 0;
+        }
+        else
+            fputs("Terminal names:", stdout);
         struct dirent *en = readdir(d);
         while(en != NULL)
         {
             if(en->d_name[0] != '.')
-                printf(" %s", en->d_name);
+            {
+                if(l)
+                {
+                    if(cnt == capa)
+                    {
+                        capa += capa >> 1;
+                        tmpname = malloc(capa * sizeof(*tmpname));
+                        if(tmpname == NULL)
+                            perror("malloc failed");
+                        else
+                        {
+                            memcpy(tmpname, names, cnt * sizeof(char*));
+                            free(names);
+                            names = tmpname;
+                        }
+                    }
+                    names[cnt] = strdup(en->d_name);
+                    ++cnt;
+                }
+                else
+                    printf(" %s", en->d_name);
+            }
             en = readdir(d);
         }
         closedir(d);
+        if(l)
+        {
+            char pathbuf[2601];
+            struct stat cachedat;
+            time_t currtime = time(NULL), thentime;
+            unsigned days, hours, minutes;
+            int lncnt, colcnt;
+            FILE *fh;
+            strcpy(pathbuf, CACHEPATH);
+            pathbuf[sizeof(CACHEPATH) - 1] = '/';
+            for(size_t i = 0; i < cnt; ++i)
+            {
+                strcpy(pathbuf + sizeof(CACHEPATH), names[i]);
+                stat(pathbuf, &cachedat);
+                thentime = cachedat.st_ctime;
+                thentime = currtime - thentime;
+                thentime /= 60;
+                fh = fopen(pathbuf, "r");
+                fscanf(fh, "%d %d", &lncnt, &colcnt);
+                fclose(fh);
+                days = thentime / 1440;
+                hours = thentime % 1440 / 60;
+                minutes = thentime % 60;
+                if(days == 0)
+                    printf("%s %d rows %d columns, %u:%02u ago.\n", names[i], lncnt, colcnt, hours, minutes);
+                else
+                    printf("%s %d rows %d columns, %u days and %u:%02u ago.\n", names[i], lncnt, colcnt, days, hours, minutes);
+                free(names[i]);
+            }
+            free(names);
+        }
+        else
+            putchar('\n');
     }
     else if(errno != ENOENT)
         perror("opendir failed");

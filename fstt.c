@@ -128,6 +128,7 @@ int main(int argl, char *argv[])
                         {
                             printf("%s [OPTIONS...] [TERMINAL NAME]\n", *argv);
                             puts("-s ROWS COLUMNS for the size of the spawned pseudoterminal.");
+                            puts("-L to list information about all running pseudoterminals.");
                             puts("-l to list names of all running pseudoterminals.");
                             puts("-e SHELL to set the shell to run.");
                             puts("-c SLAVE to create and control a terminal. DO NOT USE.");
@@ -143,8 +144,11 @@ int main(int argl, char *argv[])
                         if(spawn == NULL)
                             spawn = empty;
                         break;
+                    case'L':
+                        list_tty(1);
+                        break;
                     case'l':
-                        list_tty();
+                        list_tty(0);
                         break;
                     case'e':
                         shell = argv[++i];

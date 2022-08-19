@@ -43,6 +43,9 @@ ssize_t process_input(char *ctlmodep, char *detachp, char *buf, size_t cnt)
         {
             switch(*it)
             {
+                case 2:
+                    *ctlmodep = 0;
+                    break;
                 case'D':
                 case'd':
                     *detachp = 1;
