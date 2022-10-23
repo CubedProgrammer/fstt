@@ -62,6 +62,9 @@ int pipetty(int procfd, int ipipefd, int opipefd, int pid, unsigned rcnt, unsign
         tv.tv_sec = 300;
         tv.tv_usec = 0;
         ready = select(biggerfd + 1, fdsp, NULL, NULL, tvp);
+        npid = waitpid(pid, &status, WNOHANG);
+        if(npid == pid)
+            continue;
         if(ready == -1)
             perror("select failed");
         else if(ready)
@@ -83,7 +86,6 @@ int pipetty(int procfd, int ipipefd, int opipefd, int pid, unsigned rcnt, unsign
                     write(procfd, buf, bc);
             }
         }
-        npid = waitpid(pid, &status, WNOHANG);
     }
     if(npid != pid)
     {
@@ -102,7 +104,7 @@ int main(int argl, char *argv[])
     int inpfd, onpfd;
     struct winsize tsz;
     const char *cstr = "80", *rstr = "24";
-    const char *shell = "bash";
+    const char *shell = getenv("SHELL");
     char *spawn = NULL, *arg;
     char *attach = NULL;
     char empty[] = "";
@@ -110,6 +112,8 @@ int main(int argl, char *argv[])
     char path[2601];
     char ctrl = 0;
     signal(SIGINT, SIG_IGN);
+    if(shell == NULL)
+        shell = "bash";
     if(argl == 1)
         spawn = empty;
     for(int i = 1; i < argl; ++i)
@@ -196,7 +200,6 @@ int main(int argl, char *argv[])
                     path[sizeof(CACHEPATH) - 1] = '/';
                     strcpy(path + sizeof(CACHEPATH), attach);
                     unlink(path);
-                    printf("%s and process %i has terminated.\n", attach, pid);
                 }
                 else
                     perror("open failed");

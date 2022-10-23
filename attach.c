@@ -157,23 +157,29 @@ int attach_tty(const char *name)
                     if(access(path, F_OK))
                         detached = 2;
                 }
+                bc = read(ipipefd, cbuf, sizeof cbuf);
+                lnmoved += cntln(cbuf, bc);
+                if(lnmoved < 0)
+                    lnmoved = 0;
+                if(bc != -1)
+                    write(STDOUT_FILENO, cbuf, bc);
                 if(lnmoved)
                     printf("\033\133%ldF", lnmoved);
-                    if(width > sizeof lfbuf)
-                        spacearr = malloc(width);
+                if(width > sizeof lfbuf)
+                    spacearr = malloc(width);
+                else
+                    spacearr = lfbuf;
+                memset(spacearr, ' ', width);
+                for(unsigned i = 0; i < height; ++i)
+                {
+                    fwrite(spacearr, 1, width, stdout);
+                    if(i + 1 < height)
+                        putchar('\n');
                     else
-                        spacearr = lfbuf;
-                    memset(spacearr, ' ', width);
-                    for(unsigned i = 0; i < height; ++i)
-                    {
-                        fwrite(spacearr, 1, width, stdout);
-                        if(i + 1 < height)
-                            putchar('\n');
-                        else
-                            printf("\033\133%uF", i);
-                    }
-                    if(spacearr != lfbuf)
-                        free(spacearr);
+                        printf("\033\133%uF", i);
+                }
+                if(spacearr != lfbuf)
+                    free(spacearr);
                 if(detached == 1)
                     printf("Detached from session %s.\n", name);
                 else
