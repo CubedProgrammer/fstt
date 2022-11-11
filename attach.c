@@ -157,14 +157,24 @@ int attach_tty(const char *name)
                     if(access(path, F_OK))
                         detached = 2;
                 }
-                bc = read(ipipefd, cbuf, sizeof cbuf);
-                lnmoved += cntln(cbuf, bc);
-                if(lnmoved < 0)
-                    lnmoved = 0;
-                if(bc != -1)
-                    write(STDOUT_FILENO, cbuf, bc);
-                if(lnmoved)
-                    printf("\033\133%ldF", lnmoved);
+                FD_ZERO(fdsp);
+                FD_SET(ipipefd, fdsp);
+                tv.tv_sec = 0;
+                tv.tv_usec = 50000;
+                ready = select(ipipefd + 1, fdsp, NULL, NULL, tvp);
+                if(ready == -1)
+                    perror("select failed");
+                else if(ready)
+                {
+                    bc = read(ipipefd, cbuf, sizeof cbuf);
+                    lnmoved += cntln(cbuf, bc);
+                    if(lnmoved < 0)
+                        lnmoved = 0;
+                    if(bc != -1)
+                        write(STDOUT_FILENO, cbuf, bc);
+                    if(lnmoved)
+                        printf("\033\133%ldF", lnmoved);
+                }
                 if(width > sizeof lfbuf)
                     spacearr = malloc(width);
                 else
