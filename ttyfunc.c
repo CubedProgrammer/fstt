@@ -227,7 +227,11 @@ void list_tty(char l)
                 free(names[i]);
             }
             free(names);
+            if(cnt == 0)
+                puts("There are no terminals.");
         }
+        else if(cnt == 0)
+            puts("There are no terminals.");
         else
             putchar('\n');
     }

@@ -119,8 +119,7 @@ int main(int argl, char *argv[])
     signal(SIGINT, SIG_IGN);
     if(shell == NULL)
         shell = "bash";
-    if(argl == 1)
-        spawn = empty;
+    spawn = empty;
     for(int i = 1; i < argl; ++i)
     {
         arg = argv[i];
@@ -135,11 +134,13 @@ int main(int argl, char *argv[])
                         it += strlen(arg);
                         if(strcmp(arg, "help") == 0)
                         {
+                            puts("Version 0.2");
                             printf("%s [OPTIONS...] [TERMINAL NAME]\n", *argv);
                             puts("-s ROWS COLUMNS for the size of the spawned pseudoterminal.");
                             puts("-L to list information about all running pseudoterminals.");
                             puts("-l to list names of all running pseudoterminals.");
                             puts("-e SHELL to set the shell to run.");
+                            puts("-d LOGFILE will log the output of the terminal to specified file.");
                             puts("-c SLAVE to create and control a terminal. DO NOT USE.");
                             puts("-a NAME to attach a terminal with specified name.");
                         }
@@ -150,19 +151,17 @@ int main(int argl, char *argv[])
                     case's':
                         tsz.ws_row = atoi(rstr = argv[++i]);
                         tsz.ws_col = atoi(cstr = argv[++i]);
-                        if(spawn == NULL)
-                            spawn = empty;
                         break;
                     case'L':
                         list_tty(1);
+                        spawn = NULL;
                         break;
                     case'l':
                         list_tty(0);
+                        spawn = NULL;
                         break;
                     case'e':
                         shell = argv[++i];
-                        if(spawn == NULL)
-                            spawn = empty;
                         break;
                     case'd':
                         logfile = argv[++i];
@@ -264,6 +263,8 @@ int main(int argl, char *argv[])
         }
         if(attach != NULL)
         {
+            if(!isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO))
+                puts("Warning, standard input and standard output should both be interactive devices.");
             setvbuf(stdout, NULL, _IONBF, 0);
             succ = attach_tty(attach);
             if(succ)
