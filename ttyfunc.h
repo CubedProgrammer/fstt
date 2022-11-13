@@ -14,7 +14,7 @@
 #define IPIPEPATH "/tmp/fixed_size_terminal_terminal/inamed_pipes"
 #define OPIPEPATH "/tmp/fixed_size_terminal_terminal/onamed_pipes"
 
-int maketty(const char *name, const char *rstr, const char *cstr, const char *shell, unsigned *restrict ttynumptr);
+int maketty(const char *name, const char *rstr, const char *cstr, const char *shell, unsigned *restrict ttynumptr, const char *log);
 void list_tty(char l);
 
 #endif

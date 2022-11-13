@@ -43,7 +43,7 @@ int mktmpdir(void)
     return succ;
 }
 
-int pipetty(int procfd, int ipipefd, int opipefd, int pid, unsigned rcnt, unsigned ccnt)
+int pipetty(int procfd, int ipipefd, int opipefd, int logfd, int pid, unsigned rcnt, unsigned ccnt)
 {
     int succ = 0;
     int status, npid = 0;
@@ -75,7 +75,11 @@ int pipetty(int procfd, int ipipefd, int opipefd, int pid, unsigned rcnt, unsign
                 if(bc == -1)
                     perror("read procfd failed");
                 else
+                {
+                    if(logfd >= 0)
+                        write(logfd, buf, bc);
                     write(opipefd, buf, bc);
+                }
             }
             if(FD_ISSET(ipipefd, fdsp))
             {
@@ -102,9 +106,10 @@ int main(int argl, char *argv[])
     int master, slave;
     unsigned ttynum;
     int inpfd, onpfd;
+    int logfd = -1;
     struct winsize tsz;
     const char *cstr = "80", *rstr = "24";
-    const char *shell = getenv("SHELL");
+    const char *shell = getenv("SHELL"), *logfile = NULL;
     char *spawn = NULL, *arg;
     char *attach = NULL;
     char empty[] = "";
@@ -159,6 +164,9 @@ int main(int argl, char *argv[])
                         if(spawn == NULL)
                             spawn = empty;
                         break;
+                    case'd':
+                        logfile = argv[++i];
+                        break;
                     case'c':
                         ctrl = 1;
                     case'a':
@@ -190,7 +198,13 @@ int main(int argl, char *argv[])
                 close(slave);
                 if(inpfd > 0 && onpfd > 0)
                 {
-                    succ = pipetty(master, inpfd, onpfd, pid, tsz.ws_row, tsz.ws_col);
+                    if(logfile != NULL)
+                    {
+                        logfd = open(logfile, O_WRONLY | O_CREAT, 0644);
+                        if(logfd == -1)
+                            perror("Opening log file failed");
+                    }
+                    succ = pipetty(master, inpfd, onpfd, logfd, pid, tsz.ws_row, tsz.ws_col);
                     close(inpfd);
                     close(onpfd);
                     unlink(path);
@@ -200,6 +214,8 @@ int main(int argl, char *argv[])
                     path[sizeof(CACHEPATH) - 1] = '/';
                     strcpy(path + sizeof(CACHEPATH), attach);
                     unlink(path);
+                    if(logfd >= 0)
+                        close(logfd);
                 }
                 else
                     perror("open failed");
@@ -232,7 +248,7 @@ int main(int argl, char *argv[])
     {
         if(spawn != NULL)
         {
-            succ = maketty(spawn, rstr, cstr, shell, &ttynum);
+            succ = maketty(spawn, rstr, cstr, shell, &ttynum, logfile);
             if(succ == -1)
             {
                 fputs("Could not make terminal.\n", stderr);

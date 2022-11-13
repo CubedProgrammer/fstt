@@ -56,7 +56,7 @@ unsigned first_missing_nonnega(unsigned arr[], unsigned n)
     return first;
 }
 
-int maketty(const char *name, const char *rstr, const char *cstr, const char *shell, unsigned *restrict ttynumptr)
+int maketty(const char *name, const char *rstr, const char *cstr, const char *shell, unsigned *restrict ttynumptr, const char *log)
 {
     int succ = 0;
     int ttynum = -1;
@@ -139,7 +139,10 @@ int maketty(const char *name, const char *rstr, const char *cstr, const char *sh
             else
             {
                 realpath("/proc/self/exe", exepath);
-                execl(exepath, exepath, "-ces", name, shell, rstr, cstr, (char*)NULL);
+                if(log == NULL)
+                    execl(exepath, exepath, "-ces", name, shell, rstr, cstr, (char*)NULL);
+                else
+                    execl(exepath, exepath, "-cdes", name, log, shell, rstr, cstr, (char*)NULL);
                 perror("execl failed");
                 exit(1);
             }
