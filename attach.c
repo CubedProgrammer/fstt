@@ -13,6 +13,7 @@
 #include<string.h>
 #include<sys/ioctl.h>
 #include<sys/select.h>
+#include<sys/stat.h>
 #include<termios.h>
 #include<unistd.h>
 #include"ttyfunc.h"
@@ -89,6 +90,8 @@ int attach_tty(const char *name)
     curr.c_lflag &= ~(ECHO | ICANON);
     tcsetattr(STDIN_FILENO, TCSANOW, &curr);
     succ = ioctl(STDIN_FILENO, TIOCGWINSZ, &tsz);
+    struct stat fdat;
+    stat("/proc/self", &fdat);
     if(succ == 0)
     {
         width = tsz.ws_col;
@@ -103,15 +106,24 @@ int attach_tty(const char *name)
             lfarr = lfbuf;
         if(lfarr != NULL)
         {
-            strcpy(path, IPIPEPATH);
-            path[sizeof(IPIPEPATH) - 1] = '/';
-            strcpy(path + sizeof(IPIPEPATH), name);
+            char dirpath[2601];
+            snprintf(dirpath, sizeof(dirpath), IPIPEPATH, fdat.st_uid);
+            size_t dirlen = strlen(dirpath);
+            strcpy(path, dirpath);
+            path[dirlen] = '/';
+            strcpy(path + dirlen + 1, name);
             opipefd = open(path, O_WRONLY);
-            memcpy(path, OPIPEPATH, sizeof(OPIPEPATH) - 1);
+            snprintf(dirpath, sizeof(dirpath), OPIPEPATH, fdat.st_uid);
+            dirlen = strlen(dirpath);
+            strcpy(path, dirpath);
+            path[dirlen] = '/';
+            strcpy(path + dirlen + 1, name);
             ipipefd = open(path, O_RDONLY);
-            strcpy(path, CACHEPATH);
-            path[sizeof(CACHEPATH) - 1] = '/';
-            strcpy(path + sizeof(CACHEPATH), name);
+            snprintf(dirpath, sizeof(dirpath), CACHEPATH, fdat.st_uid);
+            dirlen = strlen(dirpath);
+            strcpy(path, dirpath);
+            path[dirlen] = '/';
+            strcpy(path + dirlen + 1, name);
             if(opipefd < 0)
                 perror("opening named pipe failed");
             else

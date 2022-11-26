@@ -60,7 +60,11 @@ int maketty(const char *name, const char *rstr, const char *cstr, const char *sh
 {
     int succ = 0;
     int ttynum = -1;
-    DIR *d = opendir(CACHEPATH);
+    char dirpath[2601];
+    struct stat fdat;
+    stat("/proc/self", &fdat);
+    snprintf(dirpath, sizeof(dirpath), CACHEPATH, fdat.st_uid);
+    DIR *d = opendir(dirpath);
     if(d == NULL)
     {
         perror("opendir failed");
@@ -114,17 +118,22 @@ int maketty(const char *name, const char *rstr, const char *cstr, const char *sh
         }
         closedir(d);
         char path[361], exepath[2601];
-        strcpy(path, CACHEPATH);
-        path[sizeof(CACHEPATH) - 1] = '/';
-        strcpy(path + sizeof(CACHEPATH), name);
+        size_t dirlen = strlen(dirpath);
+        strcpy(path, dirpath);
+        path[dirlen] = '/';
+        strcpy(path + dirlen + 1, name);
         cache_size(path, rstr, cstr);
-        strcpy(path, IPIPEPATH);
-        path[sizeof(IPIPEPATH) - 1] = '/';
-        strcpy(path + sizeof(IPIPEPATH), name);
+        snprintf(dirpath, sizeof(dirpath), IPIPEPATH, fdat.st_uid);
+        dirlen = strlen(dirpath);
+        strcpy(path, dirpath);
+        path[dirlen] = '/';
+        strcpy(path + dirlen + 1, name);
         succ += mkfifo(path, 0755);
-        strcpy(path, OPIPEPATH);
-        path[sizeof(OPIPEPATH) - 1] = '/';
-        strcpy(path + sizeof(OPIPEPATH), name);
+        snprintf(dirpath, sizeof(dirpath), OPIPEPATH, fdat.st_uid);
+        dirlen = strlen(dirpath);
+        strcpy(path, dirpath);
+        path[dirlen] = '/';
+        strcpy(path + dirlen + 1, name);
         succ += mkfifo(path, 0755);
         if(succ == 0)
         {
@@ -157,7 +166,12 @@ void list_tty(char l)
 {
     char **names, **tmpname;
     size_t cnt, capa;
-    DIR *d = opendir(CACHEPATH);
+    char dirpath[2601];
+    struct stat fdat;
+    stat("/proc/self", &fdat);
+    snprintf(dirpath, sizeof(dirpath), CACHEPATH, fdat.st_uid);
+    DIR *d = opendir(dirpath);
+    size_t dirlen = strlen(dirpath);
     if(d != NULL)
     {
         if(l)
@@ -205,11 +219,11 @@ void list_tty(char l)
             unsigned days, hours, minutes;
             int lncnt, colcnt;
             FILE *fh;
-            strcpy(pathbuf, CACHEPATH);
-            pathbuf[sizeof(CACHEPATH) - 1] = '/';
+            strcpy(pathbuf, dirpath);
+            pathbuf[dirlen] = '/';
             for(size_t i = 0; i < cnt; ++i)
             {
-                strcpy(pathbuf + sizeof(CACHEPATH), names[i]);
+                strcpy(pathbuf + dirlen + 1, names[i]);
                 stat(pathbuf, &cachedat);
                 thentime = cachedat.st_ctime;
                 thentime = currtime - thentime;

@@ -5,14 +5,14 @@
 
 // fstt is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-// You should have received a copy of the GNU General Public License along with fstt. If not, see <https://www.gnu.org/licenses/>. 
+// You shouu have received a copy of the GNU General Public License along with fstt. If not, see <https://www.gnu.org/licenses/>. 
 
 #ifndef Included_ttyfunc_h
 #define Included_ttyfunc_h
-#define TMPPATH "/tmp/fixed_size_terminal_terminal"
-#define CACHEPATH "/tmp/fixed_size_terminal_terminal/cache"
-#define IPIPEPATH "/tmp/fixed_size_terminal_terminal/inamed_pipes"
-#define OPIPEPATH "/tmp/fixed_size_terminal_terminal/onamed_pipes"
+#define TMPPATH "/tmp/fixed_size_terminal_terminal%u"
+#define CACHEPATH "/tmp/fixed_size_terminal_terminal%u/cache"
+#define IPIPEPATH "/tmp/fixed_size_terminal_terminal%u/inamed_pipes"
+#define OPIPEPATH "/tmp/fixed_size_terminal_terminal%u/onamed_pipes"
 
 int maketty(const char *name, const char *rstr, const char *cstr, const char *shell, unsigned *restrict ttynumptr, const char *log);
 void list_tty(char l);

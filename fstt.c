@@ -25,7 +25,11 @@
 int mktmpdir(void)
 {
     int succ = 0;
-    const char *dirpath = TMPPATH;
+    const char *dirfmt = TMPPATH;
+    char dirpath[2601];
+    struct stat fdat;
+    stat("/proc/self", &fdat);
+    snprintf(dirpath, sizeof(dirpath), dirfmt, fdat.st_uid);
     if(access(dirpath, F_OK))
     {
         succ = mkdir(dirpath, 0755);
@@ -33,9 +37,12 @@ int mktmpdir(void)
             perror("Making temporary directory failed");
         else
         {
-            succ = mkdir(CACHEPATH, 0755);
-            succ += mkdir(IPIPEPATH, 0755);
-            succ += mkdir(OPIPEPATH, 0755);
+            snprintf(dirpath, sizeof(dirpath), CACHEPATH, fdat.st_uid);
+            succ = mkdir(dirpath, 0755);
+            snprintf(dirpath, sizeof(dirpath), IPIPEPATH, fdat.st_uid);
+            succ += mkdir(dirpath, 0755);
+            snprintf(dirpath, sizeof(dirpath), OPIPEPATH, fdat.st_uid);
+            succ += mkdir(dirpath, 0755);
             if(succ)
                 perror("Making temporary subdirectories failed");
         }
@@ -188,11 +195,20 @@ int main(int argl, char *argv[])
             pid = fork();
             if(pid > 0)
             {
-                strcpy(path, IPIPEPATH);
-                path[sizeof(IPIPEPATH) - 1] = '/';
-                strcpy(path + sizeof(IPIPEPATH), attach);
+                char dirpath[2601];
+                struct stat fdat;
+                stat("/proc/self", &fdat);
+                snprintf(dirpath, sizeof(dirpath), IPIPEPATH, fdat.st_uid);
+                size_t dirlen = strlen(dirpath);
+                strcpy(path, dirpath);
+                path[dirlen] = '/';
+                strcpy(path + dirlen + 1, attach);
                 inpfd = open(path, O_RDWR);
-                memcpy(path, OPIPEPATH, sizeof(OPIPEPATH) - 1);
+                snprintf(dirpath, sizeof(dirpath), OPIPEPATH, fdat.st_uid);
+                dirlen = strlen(dirpath);
+                strcpy(path, dirpath);
+                path[dirlen] = '/';
+                strcpy(path + dirlen + 1, attach);
                 onpfd = open(path, O_RDWR);
                 close(slave);
                 if(inpfd > 0 && onpfd > 0)
