@@ -195,7 +195,7 @@ int main(int argl, char *argv[])
             pid = fork();
             if(pid > 0)
             {
-                char dirpath[2601];
+                char dirpath[2601], *dirstart;
                 struct stat fdat;
                 stat("/proc/self", &fdat);
                 snprintf(dirpath, sizeof(dirpath), IPIPEPATH, fdat.st_uid);
@@ -223,11 +223,13 @@ int main(int argl, char *argv[])
                     close(inpfd);
                     close(onpfd);
                     unlink(path);
-                    memcpy(path, IPIPEPATH, sizeof(IPIPEPATH) - 1);
+                    dirstart = strstr(path, "onamed");
+                    *dirstart = 'i';
                     unlink(path);
-                    strcpy(path, CACHEPATH);
-                    path[sizeof(CACHEPATH) - 1] = '/';
-                    strcpy(path + sizeof(CACHEPATH), attach);
+                    strcpy(dirstart, "cache");
+                    dirstart[5] = 1;
+                    for(char *it = dirstart + 5; *it != '\0'; ++it)
+                        *it = it[7];
                     unlink(path);
                     if(logfd >= 0)
                         close(logfd);
